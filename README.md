@@ -59,7 +59,8 @@ $ npm i bcrypt
 $ npm i -D @types/bcrypt
 ## Regulador de pressão (throttlers - Configuravel para impedir ataques de muitas requisições)
 $ npm i @nestjs/throttler@^3.1.0
-
+## Install types multer 
+$ npm i -D @types/multer
 ```
 
 ## Running the app
