@@ -7,6 +7,8 @@ import { UserIdCheckMiddleware } from './middlewares/uder-id-check.middleware';
 import { UserModule } from './user/user.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 
 @Module({
   imports: [
@@ -17,7 +19,31 @@ import { ConfigModule } from '@nestjs/config';
       // ignoreUserAgents: [/googlebot/gi] //Ignorando indexação do googlebot por exemplo
     }),
     forwardRef(() => UserModule),
-    forwardRef(() => AuthModule)
+    forwardRef(() => AuthModule),
+    MailerModule.forRoot({
+      // transport: 'smtps://user@domain.com:pass@smtp.domain.com',
+      // defaults: {
+      //   from: '"nest-modules" <modules@nestjs.com>'
+      // },
+      transport: {
+        host:'smtp.ethereal.email',
+        port: 587,
+        auth: {
+          user: 'cora.damore86@ethereal.email',
+          pass: 'Cm8u9TTqgxX1UmqyD3'
+        }
+      },
+      defaults: {
+        from: '"Hcode" <cora.damore86@ethereal.email>'
+      },
+      template: {
+        dir: __dirname + '/templates',
+        adapter: new PugAdapter(),
+        options: {
+          strict: true
+        }
+      }
+    })
   ],
   controllers: [AppController],
   providers: [

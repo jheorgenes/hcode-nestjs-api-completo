@@ -61,6 +61,11 @@ $ npm i -D @types/bcrypt
 $ npm i @nestjs/throttler@^3.1.0
 ## Install types multer 
 $ npm i -D @types/multer
+## Install Mailer
+$ npm i --save @nestjs-modules/mailer nodemailer
+$ npm i --save-dev @types/nodemailer
+## Instalação para usar tamplates nos e-mails do mailer
+$ npm i --save pug
 ```
 
 ## Running the app
