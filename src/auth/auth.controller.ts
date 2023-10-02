@@ -1,10 +1,8 @@
-import { BadRequestException, Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
-import { join } from 'path';
+import { Body, Controller, FileTypeValidator, MaxFileSizeValidator, ParseFilePipe, Post, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
 import { User } from "src/decorators/user.decorator";
 import { FileService } from "src/file/file.service";
 import { AuthGuard } from "src/guards/auth.guard";
-import { v4 as uuid } from 'uuid';
 import { AuthService } from "./auth.service";
 import { AuthForgetDTO } from "./dto/auth-forget.dto";
 import { AuthLoginDTO } from "./dto/auth-login.dto";
@@ -49,21 +47,72 @@ export class AuthController {
   @UseInterceptors(FileInterceptor('file'))
   @UseGuards(AuthGuard)
   @Post('photo')
-  async uploadPhoto(@User() user, @UploadedFile() photo: Express.Multer.File) { 
-
+  async uploadPhoto(
+    @User() user, 
+    @UploadedFile(new ParseFilePipe({ //Pipe de validação de arquivos
+      validators: [
+        new FileTypeValidator({fileType: 'image/png'}), //Validação de tipo de arquivo
+        new MaxFileSizeValidator({maxSize: 1024 * 50}) //Validação de tamanho do arquivo
+      ]
+    })
+  ) photo: Express.Multer.File) { 
     // Para fazer um upload em uma API externa (amazon, google, etc)
     // Fazer a chamada (via axios ou outra ferramenta) e mandar o arquivo para ser salvo nessa requisição
 
     //Para fazer o upload em um diretório local
-    const nameFile = `photo-${uuid()}-userId-${user.id}.png`;
-    const path = join(__dirname, '..', '..', 'storage', 'photos', nameFile);
+    const { path, fileName } = await this.authService.uploadPhoto(user, photo);
+    return { sucess: true, path: path, fileName: fileName };
+  }
 
-    try {
-      await this.fileService.upload(photo, path);
-    } catch (e) {
-      throw new BadRequestException(e);
+
+  @UseInterceptors(FilesInterceptor('files'))
+  @UseGuards(AuthGuard)
+  @Post('files')
+  async uploadFiles(
+    @User() user, 
+    @UploadedFiles(new ParseFilePipe({
+      validators: [
+        new FileTypeValidator({fileType: '^(image/png|image/jpeg)$'}),
+        new MaxFileSizeValidator({maxSize: 1024 * 50})
+      ]
+    })) files: Express.Multer.File[]
+  ) { 
+    let filesSaved = [];
+    for(let file of files) {
+      const { path, fileName } = await this.authService.uploadFile(user, file);
+      filesSaved.push({ path, fileName });
+    }
+    return { sucess: true, files: filesSaved };
+  }
+
+  @UseInterceptors(FileFieldsInterceptor([
+    {
+      name: 'photo',
+      maxCount: 1
+    },
+    {
+      name: 'documents',
+      maxCount: 10
+    }
+  ]))
+  @UseGuards(AuthGuard)
+  @Post('files-fields')
+  async uploadFilesFields(
+    @User() user, 
+    @UploadedFiles() files: { photo: Express.Multer.File, documents: Express.Multer.File[] }
+  ) { 
+
+    const { photo, documents } = files;
+    let filesSaved = [];
+    // photo is array
+    const { path, fileName } = await this.authService.uploadFile(user, photo[0]);
+    filesSaved.push({ path, fileName });
+
+    for(let file of documents) {
+      const { path, fileName } = await this.authService.uploadFile(user, file);
+      filesSaved.push({ path, fileName });
     }
 
-    return { sucess: true, path: path, nameFile: nameFile };
+    return { sucess: true, files: filesSaved };
   }
 }

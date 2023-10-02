@@ -5,6 +5,9 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { AuthRegisterDTO } from "./dto/auth-register.dto";
 import { UserService } from "src/user/user.service";
 import * as bcrypt from 'bcrypt';
+import { join } from "path";
+import { FileService } from "src/file/file.service";
+import { v4 as uuid } from 'uuid';
 
 
 @Injectable()
@@ -16,7 +19,8 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    private readonly fileService: FileService
   ) {}
 
   //O parâmetro User é do tipo @prisma/client, pois no schema do Prisma há um User (tabela) especificada.
@@ -122,5 +126,30 @@ export class AuthService {
     const user = await this.userService.create(data);
 
     return this.createToken(user); //Já está authenticado
+  }
+
+  async uploadPhoto(user, photo) {
+    const fileName = `photo-${uuid()}-userId-${user.id}.png`;
+    const path = join(__dirname, '..', '..', 'storage', 'photos', fileName);
+
+    try {
+      await this.fileService.upload(photo, path);
+    } catch (e) {
+      throw new BadRequestException(e);
+    }
+    return { path, fileName };
+  }
+
+  async uploadFile(user, file: Express.Multer.File) {
+    const typeFile = file.mimetype.substring(file.mimetype.indexOf('/') + 1);
+    const fileName = `file-${uuid()}-userId-${user.id}.${typeFile}`;
+    const path = join(__dirname, '..', '..', 'storage', 'files', fileName);
+    
+    try {
+      await this.fileService.upload(file, path);
+    } catch (e) {
+      throw new BadRequestException(e, 'Error uploading file');
+    }
+    return { path, fileName };
   }
 }
